@@ -1,8 +1,7 @@
 import requests
 import gradio as gr
 
-BASE_URL = ""
-
+BASE_URL = "https://smrutisanam-email-triage-env.hf.space"
 
 # ---------------------------
 # Smart Action Generator
