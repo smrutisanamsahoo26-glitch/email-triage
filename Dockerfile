@@ -21,4 +21,4 @@ EXPOSE 7860
 
 HEALTHCHECK CMD curl --fail http://localhost:7860 || exit 1
 
-CMD ["uvicorn", "server.app:app", "--host", "0.0.0.0", "--port", "7860", "--workers", "2"]
+CMD ["python", "ui.py"]
