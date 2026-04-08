@@ -1,7 +1,7 @@
 import requests
 import gradio as gr
 
-BASE_URL = "http://127.0.0.1:7860"
+BASE_URL = ""
 
 
 # ---------------------------
