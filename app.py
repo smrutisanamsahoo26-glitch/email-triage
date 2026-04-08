@@ -1,8 +1,8 @@
-import requests
 import gradio as gr
+from env import EmailTriagerEnvironment
 
-# ✅ Your HF Space URL (same space calling backend)
-BASE_URL = "https://smrutisanam-email-triage-env.hf.space"
+# ✅ Direct backend (NO API)
+env = EmailTriagerEnvironment()
 
 
 # ---------------------------
@@ -51,24 +51,14 @@ def smart_action(email):
 # ---------------------------
 def analyze_email(email):
     try:
-        # Reset env
-        reset_res = requests.post(f"{BASE_URL}/reset")
+        # ✅ Reset directly
+        env.reset()
 
-        if reset_res.status_code != 200:
-            return ("Error", "-", "Reset failed", "-")
-
+        # ✅ Generate action
         action = smart_action(email)
 
-        # IMPORTANT: action wrapper
-        step_res = requests.post(
-            f"{BASE_URL}/step",
-            json={"action": action}
-        )
-
-        if step_res.status_code != 200:
-            return ("Error", "-", step_res.text, "-")
-
-        result = step_res.json()
+        # ✅ Direct step (NO HTTP)
+        result = env.step(action)
 
         return (
             action["category"],
