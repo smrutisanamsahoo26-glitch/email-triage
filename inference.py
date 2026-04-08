@@ -194,26 +194,43 @@ def infer_smart(
 
 
 if __name__ == "__main__":
-    # Example usage
-    print("📧 Email Triage Inference Module")
-    print("=" * 50)
+    # Example usage with required structured output format
+    import sys
     
-    # Test 1: Single action inference
+    # Task 1: Billing Issue
+    print("[START] task=billing_refund", flush=True)
+    
     action = {
         "category": "billing",
         "priority": 4,
         "response": "We apologize for the billing issue and will process your refund."
     }
     result = infer(action, seed=42)
-    print(f"\n✅ Single Action Inference")
-    print(f"   Reward: {result['reward']:.2f}")
-    print(f"   Done: {result['done']}")
+    step_1_reward = result['reward']
+    print(f"[STEP] step=1 reward={step_1_reward:.2f}", flush=True)
     
-    # Test 2: Smart inference from email text
+    print(f"[END] task=billing_refund score={step_1_reward:.2f} steps=1", flush=True)
+    
+    # Task 2: Technical Issue
+    print("[START] task=technical_password", flush=True)
+    
+    action = {
+        "category": "technical",
+        "priority": 3,
+        "response": "Please try resetting your password again."
+    }
+    result = infer(action, seed=42)
+    step_1_reward = result['reward']
+    print(f"[STEP] step=1 reward={step_1_reward:.2f}", flush=True)
+    
+    print(f"[END] task=technical_password score={step_1_reward:.2f} steps=1", flush=True)
+    
+    # Task 3: Smart Inference
+    print("[START] task=smart_email_analysis", flush=True)
+    
     email = "I was charged twice for my order. Please refund me immediately."
     result = infer_smart(email, seed=42)
-    print(f"\n✅ Smart Inference from Email")
-    print(f"   Action Category: {result['action']['category']}")
-    print(f"   Priority: {result['action']['priority']}")
-    print(f"   Reward: {result['reward']:.2f}")
-    print(f"   Response: {result['action']['response']}")
+    step_1_reward = result['reward']
+    print(f"[STEP] step=1 reward={step_1_reward:.2f}", flush=True)
+    
+    print(f"[END] task=smart_email_analysis score={step_1_reward:.2f} steps=1", flush=True)
