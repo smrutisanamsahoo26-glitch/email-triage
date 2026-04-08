@@ -50,22 +50,21 @@ def smart_action(email):
 # ---------------------------
 def analyze_email(email):
     try:
-        # Reset environment
         reset_res = requests.post(f"{BASE_URL}/reset")
-        obs = reset_res.json()["observation"]
 
-        # Generate smart action
         action = smart_action(email)
 
-        # Call backend
         step_res = requests.post(
             f"{BASE_URL}/step",
-            json={"action": action}
+            json=action
         )
+
+        # DEBUG
+        print("STATUS:", step_res.status_code)
+        print("RESPONSE:", step_res.text)
 
         result = step_res.json()
 
-        # Extract clean output
         return (
             action["category"],
             action["priority"],
@@ -75,7 +74,6 @@ def analyze_email(email):
 
     except Exception as e:
         return ("Error", "-", str(e), "-")
-
 
 # ---------------------------
 # UI Layout
