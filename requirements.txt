@@ -4,4 +4,5 @@ uvicorn>=0.27.0
 pydantic>=2.6.0
 openai>=1.30.0
 python-dotenv>=1.0.0
+gradio>=3.0.0
 

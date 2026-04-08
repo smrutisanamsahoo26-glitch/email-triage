@@ -1,176 +1,113 @@
-from __future__ import annotations
+import requests
+import gradio as gr
 
-"""
-FastAPI server for `email_triage_env`.
-
-This server exposes:
-- OpenEnv-standard endpoints (via create_fastapi_app)
-- Hackathon endpoints:
-  - GET /tasks
-  - GET /grader
-  - GET /baseline
-"""
-
-import os
-import logging
-from time import time
-from typing import Any, Dict, List
-
-from fastapi import HTTPException
-from fastapi.responses import HTMLResponse, Response
-
-from openenv.core.env_server import create_fastapi_app
-
-from env import EmailTriagerEnvironment, get_last_score, get_last_breakdown
-from models import EmailTriageAction, EmailTriageObservation
-from tasks import TASKS
-from baseline import run_baseline
+# ✅ Use SAME SPACE URL
+BASE_URL = "https://smrutisanam-email-triage-env.hf.space"
 
 
 # ---------------------------
-# Logging Setup
+# Smart Action Generator
 # ---------------------------
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+def smart_action(email):
+    email_lower = email.lower()
 
-# ---------------------------
-# FastAPI App via OpenEnv
-# ---------------------------
-app = create_fastapi_app(
-    env=lambda: EmailTriagerEnvironment(),
-    action_cls=EmailTriageAction,
-    observation_cls=EmailTriageObservation,
-)
-
-# ---------------------------
-# Rate Limiting (for baseline)
-# ---------------------------
-_last_baseline_call = 0
-
-
-# ---------------------------
-# Health Check
-# ---------------------------
-@app.get("/health")
-def health():
-    return {"status": "ok"}
-
-
-# ---------------------------
-# Tasks Endpoint (FIXED ✅)
-# ---------------------------
-@app.get("/tasks")
-def list_tasks():
-    return [t.public_view() for t in TASKS]
-
-
-# ---------------------------
-# Grader Endpoint
-# ---------------------------
-@app.get("/grader")
-def get_last_grader_score() -> Dict[str, Any]:
-    return {
-        "last_score": get_last_score(),
-        "breakdown": get_last_breakdown(),
-        "explanation": "Score computed using category, priority, tone, intent, and completeness metrics."
-    }
-
-
-# ---------------------------
-# Baseline Endpoint
-# ---------------------------
-@app.get("/baseline")
-def run_baseline_endpoint(seed: int | None = None) -> Dict[str, Any]:
-    global _last_baseline_call
-
-    now = time()
-    if now - _last_baseline_call < 2:
-        raise HTTPException(status_code=429, detail="Too many requests. Please wait.")
-
-    _last_baseline_call = now
-
-    try:
-        logger.info("Running baseline evaluation")
-
-        if not os.environ.get("OPENAI_API_KEY", "").strip():
-            raise HTTPException(
-                status_code=400,
-                detail="OPENAI_API_KEY not set."
-            )
-
-        resolved_seed = int(seed) if seed is not None else int(os.environ.get("BASELINE_SEED", "42"))
-
-        results = run_baseline(seed=resolved_seed)
-
+    if "refund" in email_lower or "charged" in email_lower:
         return {
-            "status": "success",
-            "seed": resolved_seed,
-            "results": results
+            "response_text": "We apologize for the inconvenience. We will reverse the duplicate charge and confirm your refund shortly.",
+            "category": "billing",
+            "priority": 4
         }
 
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Baseline failed: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+    elif "password" in email_lower or "reset" in email_lower:
+        return {
+            "response_text": "Please try using the latest reset link, check your spam folder, and clear your browser cache.",
+            "category": "technical",
+            "priority": 3
+        }
 
+    elif "blocked" in email_lower or "can't access" in email_lower:
+        return {
+            "response_text": "Please reset your password and verify your email. If the issue persists, contact support.",
+            "category": "technical",
+            "priority": 5
+        }
 
-# ---------------------------
-# Web UI
-# ---------------------------
-@app.get("/web")
-def web_home() -> HTMLResponse:
-    html = """
-    <html>
-      <body style="font-family: sans-serif; margin: 2rem;">
-        <h2>email_triage_env 🚀</h2>
-        <ul>
-          <li>/reset</li>
-          <li>/step</li>
-          <li>/state</li>
-          <li>/tasks</li>
-          <li>/grader</li>
-          <li>/baseline</li>
-        </ul>
-        <a href="/docs">Docs</a>
-      </body>
-    </html>
-    """
-    return HTMLResponse(content=html)
+    elif "unsubscribe" in email_lower or "emails" in email_lower:
+        return {
+            "response_text": "You can unsubscribe from promotional emails using the link provided.",
+            "category": "general",
+            "priority": 2
+        }
 
-
-# ---------------------------
-# Root Endpoint
-# ---------------------------
-@app.get("/")
-def root():
     return {
-        "name": "email_triage_env",
-        "status": "running",
-        "docs": "/docs",
-        "health": "/health"
+        "response_text": "Thank you for reaching out. We will review your issue and get back to you shortly.",
+        "category": "general",
+        "priority": 2
     }
 
 
 # ---------------------------
-# Favicon Fix
+# Main Function
 # ---------------------------
-@app.get("/favicon.ico")
-def favicon():
-    return Response(status_code=204)
+def analyze_email(email):
+    try:
+        # ✅ Step 1: Reset
+        reset_res = requests.post(f"{BASE_URL}/reset")
+        reset_data = reset_res.json()
+
+        if "observation" not in reset_data:
+            return ("Error", "-", "Reset failed", "-")
+
+        # ✅ Step 2: Create action
+        action = smart_action(email)
+
+        # ✅ Step 3: Call step (IMPORTANT FORMAT)
+        step_res = requests.post(
+            f"{BASE_URL}/step",
+            json={"action": action}
+        )
+
+        if step_res.status_code != 200:
+            return ("Error", "-", step_res.text, "-")
+
+        result = step_res.json()
+
+        return (
+            action["category"],
+            action["priority"],
+            action["response_text"],
+            result.get("reward", "N/A"),
+        )
+
+    except Exception as e:
+        return ("Error", "-", str(e), "-")
 
 
 # ---------------------------
-# Entrypoint
+# UI
 # ---------------------------
-def main() -> None:
-    import uvicorn
+with gr.Blocks(theme=gr.themes.Soft()) as demo:
 
-    port = int(os.environ.get("PORT", "7860"))
-    logger.info(f"Starting server on port {port}")
+    gr.Markdown("# 📧 Email Triage AI")
+    gr.Markdown("Classify emails, assign priority, and generate responses instantly.")
 
-    uvicorn.run("server.app:app", host="0.0.0.0", port=port)
+    email_input = gr.Textbox(
+        lines=8,
+        placeholder="Paste customer email here..."
+    )
 
+    btn = gr.Button("Analyze Email")
+
+    category = gr.Textbox(label="Category")
+    priority = gr.Textbox(label="Priority")
+    response = gr.Textbox(label="Generated Response")
+    score = gr.Textbox(label="Score")
+
+    btn.click(
+        fn=analyze_email,
+        inputs=email_input,
+        outputs=[category, priority, response, score]
+    )
 
 if __name__ == "__main__":
-    main()
+    demo.launch(server_name="0.0.0.0", server_port=7860)

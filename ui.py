@@ -1,7 +1,8 @@
-import requests
 import gradio as gr
 
-BASE_URL = "https://smrutisanam-email-triage-env.hf.space"
+# ✅ Import your backend environment
+from server.app import env
+
 
 # ---------------------------
 # Smart Action Generator
@@ -49,20 +50,14 @@ def smart_action(email):
 # ---------------------------
 def analyze_email(email):
     try:
-        reset_res = requests.post(f"{BASE_URL}/reset")
+        # ✅ Reset environment directly
+        env.reset()
 
+        # ✅ Generate action
         action = smart_action(email)
 
-        step_res = requests.post(
-            f"{BASE_URL}/step",
-            json=action
-        )
-
-        # DEBUG
-        print("STATUS:", step_res.status_code)
-        print("RESPONSE:", step_res.text)
-
-        result = step_res.json()
+        # ✅ Call backend directly (NO API CALL)
+        result = env.step(action)
 
         return (
             action["category"],
@@ -73,6 +68,7 @@ def analyze_email(email):
 
     except Exception as e:
         return ("Error", "-", str(e), "-")
+
 
 # ---------------------------
 # UI Layout
@@ -100,5 +96,6 @@ with gr.Blocks(theme=gr.themes.Soft()) as demo:
         outputs=[category, priority, response, score]
     )
 
+# ✅ Launch
 if __name__ == "__main__":
     demo.launch(server_name="0.0.0.0", server_port=7860)
