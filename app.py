@@ -5,34 +5,31 @@ from env import EmailTriagerEnvironment
 env = EmailTriagerEnvironment()
 
 
-# ---------------------------
-# Smart Action Generator
-# ---------------------------
 def smart_action(email):
     email_lower = email.lower()
 
     if "refund" in email_lower or "charged" in email_lower:
         return {
-            "response_text": "We apologize for the inconvenience. We will reverse the duplicate charge and confirm your refund shortly.",
+            "response_text": "We apologize for the inconvenience. We will reverse the duplicate charge shortly.",
             "category": "billing",
             "priority": 4
         }
 
     elif "password" in email_lower or "reset" in email_lower:
         return {
-            "response_text": "Please try using the latest reset link, check your spam folder, and clear your browser cache.",
+            "response_text": "Please use the latest reset link and check spam folder.",
             "category": "technical",
             "priority": 3
         }
 
     elif "blocked" in email_lower or "can't access" in email_lower:
         return {
-            "response_text": "Please reset your password and verify your email. If the issue persists, contact support.",
+            "response_text": "Try resetting password and verifying email.",
             "category": "technical",
             "priority": 5
         }
 
-    elif "unsubscribe" in email_lower or "emails" in email_lower:
+    elif "unsubscribe" in email_lower:
         return {
             "response_text": "You can unsubscribe using the link provided.",
             "category": "general",
@@ -40,24 +37,16 @@ def smart_action(email):
         }
 
     return {
-        "response_text": "Thank you for reaching out. We will review your issue and get back to you shortly.",
+        "response_text": "We will review your issue and get back to you.",
         "category": "general",
         "priority": 2
     }
 
 
-# ---------------------------
-# Main Function
-# ---------------------------
 def analyze_email(email):
     try:
-        # ✅ Reset directly
         env.reset()
-
-        # ✅ Generate action
         action = smart_action(email)
-
-        # ✅ Direct step (NO HTTP)
         result = env.step(action)
 
         return (
@@ -71,9 +60,6 @@ def analyze_email(email):
         return ("Error", "-", str(e), "-")
 
 
-# ---------------------------
-# UI
-# ---------------------------
 with gr.Blocks(theme=gr.themes.Soft()) as demo:
 
     gr.Markdown("# 📧 Email Triage AI")
